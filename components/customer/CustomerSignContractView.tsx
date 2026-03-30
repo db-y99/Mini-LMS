@@ -1,8 +1,10 @@
+'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
 export const CustomerSignContractView: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -36,9 +38,9 @@ export const CustomerSignContractView: React.FC = () => {
 
   const handleBack = () => {
     if (window.history.length > 1) {
-      navigate(-1);
+      router.back();
     } else {
-      navigate('/login');
+      router.push('/login');
     }
   };
 

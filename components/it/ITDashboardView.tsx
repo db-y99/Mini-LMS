@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Server, Database, Activity, AlertTriangle, CheckCircle, Clock,

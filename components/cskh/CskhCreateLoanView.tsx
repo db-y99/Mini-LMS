@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import {
   LoanFormData,
@@ -66,7 +68,7 @@ const initialFormData: LoanFormData = {
 type SubmitMode = 'draft' | 'security' | 'send';
 
 export const CskhCreateLoanView: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { createLoan } = useWorkflow();
   const { user } = useAuth();
   const [formData, setFormData] = useState<LoanFormData>(initialFormData);
@@ -545,7 +547,7 @@ export const CskhCreateLoanView: React.FC = () => {
         if (details.color) detailParts.push(`Màu: ${details.color}`);
         if (details.imei) detailParts.push(`IMEI: ${details.imei}`);
         if (details.condition) detailParts.push(`Tình trạng: ${details.condition}`);
-      } else if (formData.collateralType === 'laptop') {
+      } else if ((formData.collateralType as string) === 'laptop') {
         if (details.manufacturer) detailParts.push(`Hãng: ${details.manufacturer}`);
         if (details.deviceModel) detailParts.push(`Model: ${details.deviceModel}`);
         if (details.cpu) detailParts.push(`CPU: ${details.cpu}`);
@@ -584,8 +586,19 @@ export const CskhCreateLoanView: React.FC = () => {
       updatedAt: now,
       documents,
       referralCode: formData.referralCode || undefined,
-      internalNotes: formData.internalNotes || ''
-    };
+      internalNotes: formData.internalNotes || '',
+      version: 1,
+      dpd: 0,
+      overdue_level: 'none',
+      is_expired: false,
+      is_frozen: false,
+      risk_score: 0,
+      risk_grade: 'C',
+      pd: 0,
+      lgd: 0,
+      ecl: 0,
+      ecl_stage: 1
+    } as LoanApplication;
   };
 
   const handleSubmit = async (mode: SubmitMode) => {
@@ -644,12 +657,7 @@ export const CskhCreateLoanView: React.FC = () => {
 
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      navigate('/cs/loans', {
-        state: {
-          message,
-          loanId: newLoan.id
-        }
-      });
+      router.push('/cs/loans');
     } catch (err) {
       console.error('Failed to create loan:', err);
       setError('Có lỗi xảy ra khi tạo hồ sơ vay. Vui lòng thử lại.');
@@ -985,7 +993,7 @@ export const CskhCreateLoanView: React.FC = () => {
               )}
 
               {/* Máy tính / Laptop */}
-              {formData.collateralType === 'laptop' && (
+              {(formData.collateralType as string) === 'laptop' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -1488,11 +1496,11 @@ export const CskhCreateLoanView: React.FC = () => {
 
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/60">
               <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
-                {documentTypes.map(doc => {
+                {documentTypes.map((doc, index) => {
                   const items = getDocsByType(doc.type);
                   const hasDocs = items.length > 0;
                   return (
-                    <div key={doc.type} className="p-4 flex items-center gap-4">
+                    <div key={`${doc.type}-${index}`} className="p-4 flex items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold text-slate-900">

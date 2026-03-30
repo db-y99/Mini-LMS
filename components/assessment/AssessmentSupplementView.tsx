@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import {
   FileText, Clock, User, DollarSign, AlertCircle, CheckCircle,
   XCircle, Eye, ArrowLeft, Send, Search, Filter
@@ -10,7 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAudit } from '../../contexts/AuditContext';
 
 export const AssessmentSupplementView: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { loans, updateLoanStatus, refreshLoans } = useWorkflow();
   const { user } = useAuth();
   const { logAction } = useAudit();
@@ -94,10 +96,7 @@ export const AssessmentSupplementView: React.FC = () => {
       );
 
       if (success) {
-        // Lưu thông tin bổ sung vào loan
-        const storageService = (await import('../../services/storageService')).storageService;
-        await storageService.saveLoan(updatedLoan);
-
+        // Loan already updated by updateLoanStatus
         alert('Đã yêu cầu CSKH bổ sung hồ sơ thành công!');
         setShowSupplementModal(false);
         setSelectedLoan(null);
@@ -144,7 +143,7 @@ export const AssessmentSupplementView: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/ca/dashboard')}
+            onClick={() => router.push('/ca/dashboard')}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-slate-600" />
@@ -242,7 +241,7 @@ export const AssessmentSupplementView: React.FC = () => {
 
                   <div className="flex items-center gap-2 ml-4">
                     <button
-                      onClick={() => navigate(`/ca/assess/${loan.id}`)}
+                      onClick={() => router.push(`/ca/assess/${loan.id}`)}
                       className="px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
                     >
                       <Eye className="w-4 h-4" />

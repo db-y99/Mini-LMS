@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
   Calculator, CreditCard, DollarSign, BarChart3, TrendingUp, TrendingDown,

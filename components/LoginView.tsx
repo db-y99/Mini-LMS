@@ -1,19 +1,20 @@
+'use client';
+
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Users, FileSearch, Calculator, Lock, ArrowRight, Fingerprint, Activity, Server } from 'lucide-react';
-import { UserRole } from '../types';
-import { getDefaultRouteForRole } from '../routes';
-import { useAuth } from '../contexts/AuthContext';
-import logo from '../logo.png';
+import { useRouter } from 'next/navigation';
+import { ShieldCheck, Users, FileSearch, Calculator, Lock, ArrowRight, Fingerprint, Activity, Server, AlertTriangle, Scale, Building } from 'lucide-react';
+import { UserRole } from '@/types';
+import { getDefaultRouteForRole } from '@/routes';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginViewProps {
-  onLogin: (role: UserRole, userData: any) => void;
+  onLogin?: (role: UserRole, userData: any) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const { login } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const roles = [
     { 
@@ -46,7 +47,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       name: 'Phạm Thị Mai', 
       icon: Calculator, 
       color: 'green', 
-      desc: 'Duyệt giải ngân, thu hồi nợ' 
+      desc: 'Duyệt giải ngân, thanh toán' 
+    },
+    { 
+      id: 'collection', 
+      label: 'Nhân viên Thu hồi', 
+      name: 'Hoàng Minh Đức', 
+      icon: AlertTriangle, 
+      color: 'red', 
+      desc: 'Thu hồi nợ quá hạn, liên hệ KH' 
+    },
+    { 
+      id: 'legal', 
+      label: 'Nhân viên Pháp chế', 
+      name: 'Vũ Thị Lan', 
+      icon: Scale, 
+      color: 'rose', 
+      desc: 'Xử lý pháp lý, kiện tụng' 
+    },
+    { 
+      id: 'branch_manager', 
+      label: 'Quản lý Chi nhánh', 
+      name: 'Đặng Văn Hùng', 
+      icon: Building, 
+      color: 'teal', 
+      desc: 'Quản lý hoạt động chi nhánh' 
     },
     { 
       id: 'admin', 
@@ -82,7 +107,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       // Small delay to ensure state is updated before navigation
       setTimeout(() => {
         const defaultRoute = getDefaultRouteForRole(roleId);
-        navigate(`/${defaultRoute}`);
+        router.push(`/${defaultRoute}`);
       }, 100);
     }, 800);
   };
@@ -99,7 +124,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30 bg-white">
-              <img src={logo} alt="Mini-LMS Logo" className="w-8 h-8 object-contain" />
+              <img src="/logo.png" alt="Mini-LMS Logo" className="w-8 h-8 object-contain" />
             </div>
             <span className="text-2xl font-bold text-white tracking-tight">Mini-LMS Syst</span>
           </div>
@@ -131,7 +156,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         <div className="w-full max-w-md">
             <div className="text-center mb-10 lg:hidden">
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-600/20">
-                <img src={logo} alt="Mini-LMS Logo" className="w-12 h-12 object-contain" />
+                <img src="/logo.png" alt="Mini-LMS Logo" className="w-12 h-12 object-contain" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900">Mini-LMS</h2>
               <p className="text-slate-500">Đăng nhập để truy cập hệ thống</p>
@@ -166,9 +191,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                         <div className={`
                             w-12 h-12 rounded-full flex items-center justify-center mr-4 transition-colors
                             ${role.id === 'cskh' ? 'bg-blue-100 text-blue-600' : 
-                              role.id === 'risk' ? 'bg-amber-100 text-amber-600' : 
+                              role.id === 'assessment' ? 'bg-amber-100 text-amber-600' : 
                               role.id === 'security' ? 'bg-indigo-100 text-indigo-600' : 
-                              role.id === 'accountant' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}
+                              role.id === 'accountant' ? 'bg-green-100 text-green-600' : 
+                              role.id === 'collection' ? 'bg-red-100 text-red-600' :
+                              role.id === 'legal' ? 'bg-rose-100 text-rose-600' :
+                              role.id === 'branch_manager' ? 'bg-teal-100 text-teal-600' :
+                              role.id === 'it' ? 'bg-cyan-100 text-cyan-600' :
+                              role.id === 'customer' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600'}
                         `}>
                             <role.icon className="w-6 h-6" />
                         </div>

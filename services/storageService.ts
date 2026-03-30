@@ -5,14 +5,15 @@
  * easily swapped between localStorage and database later.
  */
 
-import { LoanApplication, Customer, AuditLogEntry, User } from '../types';
+import { LoanApplication, Customer, AuditLogEntry, User, Branch } from '../types';
 
 const STORAGE_KEYS = {
   LOANS: 'Mini-LMS_loans',
   CUSTOMERS: 'Mini-LMS_customers',
   AUDIT_LOGS: 'Mini-LMS_audit_logs',
   USERS: 'Mini-LMS_users',
-  SETTINGS: 'Mini-LMS_settings'
+  SETTINGS: 'Mini-LMS_settings',
+  BRANCHES: 'Mini-LMS_branches'
 } as const;
 
 class StorageService {
@@ -28,6 +29,8 @@ class StorageService {
         ...loan,
         createdAt: new Date(loan.createdAt),
         updatedAt: new Date(loan.updatedAt),
+        canonicalStatus: loan.canonicalStatus,
+        legacyStatus: loan.legacyStatus,
         customer: {
           ...loan.customer,
           createdAt: new Date(loan.customer.createdAt),
@@ -231,7 +234,175 @@ class StorageService {
       return false;
     }
   }
+
+  // ========== NEW: Computed Fields Support ==========
+  
+  /**
+   * Get payment schedule for a loan
+   */
+  async getPaymentSchedule(loanId: string): Promise<any | null> {
+    // TODO: Implement payment schedule storage
+    // For now, return null
+    return null;
+  }
+
+  /**
+   * Calculate DPD for a loan
+   */
+  calculateDPD(loan: LoanApplication): number {
+    // Import from utils
+    const { calculateDPD } = require('../utils/loanComputedFields');
+    const schedule = this.getPaymentSchedule(loan.id);
+    return calculateDPD(loan, schedule);
+  }
+
+  /**
+   * Calculate overdue level
+   */
+  calculateOverdueLevel(dpd: number): 'none' | 'minor' | 'severe' | 'collection' {
+    const { calculateOverdueLevel } = require('../utils/loanComputedFields');
+    return calculateOverdueLevel(dpd);
+  }
+
+  /**
+   * Check if contract is expired
+   */
+  isContractExpired(loan: LoanApplication): boolean {
+    const { isContractExpired } = require('../utils/loanComputedFields');
+    return isContractExpired(loan);
+  }
+
+  /**
+   * Update computed fields for a loan before saving
+   */
+  async updateComputedFields(loan: LoanApplication): Promise<LoanApplication> {
+    const { updateLoanComputedFields } = require('../utils/loanComputedFields');
+    const schedule = await this.getPaymentSchedule(loan.id);
+    return updateLoanComputedFields(loan, schedule);
+  }
+
+  /**
+   * Save loan with computed fields updated
+   */
+  async saveLoanWithComputedFields(loan: LoanApplication): Promise<boolean> {
+    const updatedLoan = await this.updateComputedFields(loan);
+    return this.saveLoan(updatedLoan);
+  }
+
+  // ========== NEW: Branch Management ==========
+  
+  async getBranches(): Promise<Branch[]> {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.BRANCHES);
+      if (!stored) {
+        // Return default branches on first load
+        const defaultBranches: Branch[] = [
+          {
+            id: 'branch-1',
+            code: 'HN01',
+            name: 'Chi nhánh Hà Nội',
+            province: 'Hà Nội',
+            address: '123 Đường Láng, Đống Đa',
+            phone: '024 1234 5678',
+            managerId: 'user-admin',
+            managerName: 'Admin',
+            approvalLimit: 50000000,
+            region: 'North',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          {
+            id: 'branch-2',
+            code: 'HCM01',
+            name: 'Chi nhánh TP.HCM',
+            province: 'Hồ Chí Minh',
+            address: '456 Nguyễn Huệ, Quận 1',
+            phone: '028 9876 5432',
+            managerId: 'user-admin',
+            managerName: 'Admin',
+            approvalLimit: 50000000,
+            region: 'South',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        ];
+        // Save default branches
+        await this.saveBranches(defaultBranches);
+        return defaultBranches;
+      }
+      
+      const branches = JSON.parse(stored);
+      return branches.map((branch: any) => ({
+        ...branch,
+        createdAt: new Date(branch.createdAt),
+        updatedAt: new Date(branch.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Failed to load branches from storage:', error);
+      return [];
+    }
+  }
+
+  async saveBranch(branch: Branch): Promise<boolean> {
+    try {
+      const branches = await this.getBranches();
+      const existingIndex = branches.findIndex(b => b.id === branch.id);
+      
+      if (existingIndex >= 0) {
+        branches[existingIndex] = { ...branch, updatedAt: new Date() };
+      } else {
+        branches.push(branch);
+      }
+      
+      return this.saveBranches(branches);
+    } catch (error) {
+      console.error('Failed to save branch:', error);
+      return false;
+    }
+  }
+
+  async saveBranches(branches: Branch[]): Promise<boolean> {
+    try {
+      localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branches));
+      return true;
+    } catch (error) {
+      console.error('Failed to save branches:', error);
+      return false;
+    }
+  }
+
+  async deleteBranch(branchId: string): Promise<boolean> {
+    try {
+      const branches = await this.getBranches();
+      const filtered = branches.filter(b => b.id !== branchId);
+      return this.saveBranches(filtered);
+    } catch (error) {
+      console.error('Failed to delete branch:', error);
+      return false;
+    }
+  }
+
+  // ========== NEW: Workflow Transitions (Data-Driven) ==========
+  
+  getWorkflowTransitions(): any[] {
+    const stored = localStorage.getItem('Mini-LMS_workflow_transitions');
+    if (!stored) return [];
+    return JSON.parse(stored);
+  }
+
+  saveWorkflowTransitions(transitions: any[]): boolean {
+    try {
+      localStorage.setItem('Mini-LMS_workflow_transitions', JSON.stringify(transitions));
+      return true;
+    } catch (error) {
+      console.error('Failed to save workflow transitions:', error);
+      return false;
+    }
+  }
 }
 
 export const storageService = new StorageService();
+
 

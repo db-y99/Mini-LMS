@@ -5,6 +5,7 @@ import { FileUpload } from './FileUpload';
 
 const INITIAL_FORM: LoanFormData = {
   collateralType: 'bike',
+  collateralDescription: '',
   fullName: '',
   phoneNumber: '',
   gender: 'male',
@@ -16,8 +17,8 @@ const INITIAL_FORM: LoanFormData = {
   province: '',
   district: '',
   address: '',
-  loanAmount: '',
-  loanDuration: '12',
+  loanAmount: 0,
+  loanDuration: 12,
   referralCode: '',
   internalNotes: ''
 };
@@ -28,6 +29,7 @@ const INITIAL_DOCS: DocUploads = {
   portrait: { file: null, previewUrl: null, progress: 0 },
   utilityBill: { file: null, previewUrl: null, progress: 0 },
   residency: { file: null, previewUrl: null, progress: 0 },
+  collateral: { file: null, previewUrl: null, progress: 0 },
 };
 
 export const LoanForm: React.FC = () => {

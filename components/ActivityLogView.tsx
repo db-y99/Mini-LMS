@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Calendar, Download, User, FileText, Settings, Shield, LogIn, CheckCircle2, AlertCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
 import { useAudit } from '../contexts/AuditContext';
@@ -206,7 +207,7 @@ export const ActivityLogView: React.FC = () => {
                 </div>
 
                 <div className="relative border-l-2 border-slate-200 ml-3 space-y-8 pb-4">
-                    {group.items.map((item) => (
+                    {group.items.map((item: { id: string; type: string; user: string; action: string; target: string; time: string; detail: string }) => (
                         <div key={item.id} className="relative pl-8 group">
                             {/* Connector Dot */}
                             <div className={`absolute -left-[11px] top-1 w-6 h-6 rounded-full border-2 bg-white flex items-center justify-center ${getBgColor(item.type)}`}>

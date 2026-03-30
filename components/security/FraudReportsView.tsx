@@ -1,8 +1,9 @@
+'use client';
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  AlertTriangle, Search, Filter, Download, Eye, Ban,
-  TrendingUp, Calendar, User, Phone, MapPin, Shield,
-  ChevronDown, X, AlertCircle
+  AlertTriangle, Search, Filter, ShieldAlert, Eye, Ban,
+  Calendar, User, Phone, CheckCircle2, Clock, XCircle, Info
 } from 'lucide-react';
 
 interface FraudAlert {
@@ -12,7 +13,6 @@ interface FraudAlert {
     id: string;
     name: string;
     phone: string;
-    email?: string;
     idNumber: string;
   };
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -21,399 +21,344 @@ interface FraudAlert {
   timestamp: Date;
   status: 'active' | 'investigating' | 'resolved' | 'false_positive';
   assignedTo?: string;
-  resolution?: string;
 }
 
 export const FraudReportsView: React.FC = () => {
+  const router = useRouter();
   const [alerts, setAlerts] = useState<FraudAlert[]>([]);
-  const [filteredAlerts, setFilteredAlerts] = useState<FraudAlert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedAlert, setSelectedAlert] = useState<FraudAlert | null>(null);
 
   useEffect(() => {
-    let filtered = alerts;
+    // Mock data
+    setTimeout(() => {
+      setAlerts([
+        {
+          id: 'FRD-9901',
+          type: 'duplicate_ip',
+          customer: { 
+            id: 'CUST-001', 
+            name: 'Lê Hoàng Minh', 
+            phone: '0901234567', 
+            idNumber: '001928374421' 
+          },
+          severity: 'high',
+          description: 'Trùng địa chỉ IP với 3 hồ sơ khác đã bị từ chối trước đó.',
+          evidence: ['IP: 113.190.23.45', 'Device Fingerprint matched'],
+          timestamp: new Date(),
+          status: 'active'
+        },
+        {
+          id: 'FRD-8822',
+          type: 'blacklist_hit',
+          customer: { 
+            id: 'CUST-002', 
+            name: 'Trần Minh Tâm', 
+            phone: '0811223344', 
+            idNumber: '034293847522' 
+          },
+          severity: 'critical',
+          description: 'Định danh trùng khớp với danh sách đen hệ thống.',
+          evidence: ['Blacklist ID Match', 'Phone Number Blocked'],
+          timestamp: new Date(Date.now() - 3600000),
+          status: 'investigating',
+          assignedTo: 'Admin SEC'
+        }
+      ]);
+      setLoading(false);
+    }, 800);
+  }, []);
 
-    if (searchTerm) {
-      filtered = filtered.filter(alert =>
-        alert.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alert.customer.phone.includes(searchTerm) ||
-        alert.customer.idNumber.includes(searchTerm) ||
-        alert.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  const filteredAlerts = alerts.filter(alert => {
+    const matchesSearch = 
+      alert.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      alert.customer.phone.includes(searchTerm) ||
+      alert.customer.idNumber.includes(searchTerm) ||
+      alert.id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSeverity = severityFilter === 'all' || alert.severity === severityFilter;
+    const matchesStatus = statusFilter === 'all' || alert.status === statusFilter;
+    
+    return matchesSearch && matchesSeverity && matchesStatus;
+  });
 
-    if (severityFilter !== 'all') {
-      filtered = filtered.filter(alert => alert.severity === severityFilter);
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(alert => alert.status === statusFilter);
-    }
-
-    setFilteredAlerts(filtered);
-  }, [alerts, searchTerm, severityFilter, statusFilter]);
+  const stats = {
+    total: alerts.length,
+    active: alerts.filter(a => a.status === 'active').length,
+    investigating: alerts.filter(a => a.status === 'investigating').length,
+    resolved: alerts.filter(a => a.status === 'resolved').length
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      case 'medium': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'critical': return 'bg-red-200 text-red-900 border-red-300';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
+      case 'critical': return 'bg-red-100 text-red-700';
+      case 'high': return 'bg-amber-100 text-amber-700';
+      case 'medium': return 'bg-blue-100 text-blue-700';
+      case 'low': return 'bg-green-100 text-green-700';
+      default: return 'bg-slate-100 text-slate-700';
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getSeverityLabel = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'Nguy hiểm';
+      case 'high': return 'Cao';
+      case 'medium': return 'Trung bình';
+      case 'low': return 'Thấp';
+      default: return severity;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-red-100 text-red-800';
-      case 'investigating': return 'bg-amber-100 text-amber-800';
-      case 'resolved': return 'bg-green-100 text-green-800';
-      case 'false_positive': return 'bg-slate-100 text-slate-800';
-      default: return 'bg-slate-100 text-slate-800';
+      case 'active':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Chưa xử lý
+          </span>
+        );
+      case 'investigating':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+            <Clock className="w-3 h-3 mr-1" />
+            Đang điều tra
+          </span>
+        );
+      case 'resolved':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            <CheckCircle2 className="w-3 h-3 mr-1" />
+            Đã xử lý
+          </span>
+        );
+      case 'false_positive':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+            <XCircle className="w-3 h-3 mr-1" />
+            Sai dương
+          </span>
+        );
+      default:
+        return null;
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'duplicate_ip': return 'IP trùng lặp';
-      case 'fake_phone': return 'Số điện thoại giả';
+      case 'fake_phone': return 'SĐT giả mạo';
       case 'mismatched_info': return 'Thông tin không khớp';
-      case 'blacklist_hit': return 'Danh sách đen';
-      case 'suspicious_pattern': return 'Mẫu nghi ngờ';
+      case 'blacklist_hit': return 'Trùng Blacklist';
+      case 'suspicious_pattern': return 'Hành vi bất thường';
       default: return type;
     }
-  };
-
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Gần đây';
-    if (diffInHours < 24) return `${diffInHours} giờ trước`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} ngày trước`;
-  };
-
-  const stats = {
-    total: alerts.length,
-    active: alerts.filter(a => a.status === 'active').length,
-    investigating: alerts.filter(a => a.status === 'investigating').length,
-    resolved: alerts.filter(a => a.status === 'resolved').length,
-    critical: alerts.filter(a => a.severity === 'critical').length
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Báo cáo Gian lận</h1>
-          <p className="text-slate-600">Giám sát và xử lý các cảnh báo gian lận</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-            <Download className="w-4 h-4" />
-            Xuất báo cáo
-          </button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Báo cáo gian lận</h1>
+        <p className="text-slate-600 text-sm">
+          Phát hiện và xử lý các hành vi gian lận, làm giả hồ sơ.
+        </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Tổng cảnh báo</p>
-              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-slate-400" />
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <ShieldAlert className="w-5 h-5 text-red-600" />
+            <span className="text-xs font-medium text-slate-500">Tổng</span>
           </div>
+          <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+          <div className="text-xs text-slate-600">Cảnh báo</div>
         </div>
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Đang hoạt động</p>
-              <p className="text-2xl font-bold text-red-600">{stats.active}</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-red-400" />
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span className="text-xs font-medium text-slate-500">Mới</span>
           </div>
+          <div className="text-2xl font-bold text-slate-900">{stats.active}</div>
+          <div className="text-xs text-slate-600">Chưa xử lý</div>
         </div>
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Đang điều tra</p>
-              <p className="text-2xl font-bold text-amber-600">{stats.investigating}</p>
-            </div>
-            <Shield className="w-8 h-8 text-amber-400" />
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <Clock className="w-5 h-5 text-amber-600" />
+            <span className="text-xs font-medium text-slate-500">Đang xử lý</span>
           </div>
+          <div className="text-2xl font-bold text-slate-900">{stats.investigating}</div>
+          <div className="text-xs text-slate-600">Điều tra</div>
         </div>
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Đã xử lý</p>
-              <p className="text-2xl font-bold text-green-600">{stats.resolved}</p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-400" />
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <span className="text-xs font-medium text-slate-500">Hoàn thành</span>
           </div>
-        </div>
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Mức nghiêm trọng</p>
-              <p className="text-2xl font-bold text-red-700">{stats.critical}</p>
-            </div>
-            <Ban className="w-8 h-8 text-red-500" />
-          </div>
+          <div className="text-2xl font-bold text-slate-900">{stats.resolved}</div>
+          <div className="text-xs text-slate-600">Đã xử lý</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên, số điện thoại..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div className="relative">
-            <select
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
-            >
-              <option value="all">Tất cả mức độ</option>
-              <option value="low">Thấp</option>
-              <option value="medium">Trung bình</option>
-              <option value="high">Cao</option>
-              <option value="critical">Nguy hiểm</option>
-            </select>
-            <ChevronDown className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
-
-          <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="investigating">Đang điều tra</option>
-              <option value="resolved">Đã xử lý</option>
-              <option value="false_positive">Sai dương tính</option>
-            </select>
-            <ChevronDown className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
-
-          <button
-            onClick={() => {
-              setSearchTerm('');
-              setSeverityFilter('all');
-              setStatusFilter('all');
-            }}
-            className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-2"
-          >
-            <X className="w-4 h-4" />
-            Xóa bộ lọc
-          </button>
+      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên, SĐT, mã cảnh báo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+          />
         </div>
+        <select
+          value={severityFilter}
+          onChange={(e) => setSeverityFilter(e.target.value)}
+          className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none font-medium"
+        >
+          <option value="all">Tất cả mức độ</option>
+          <option value="critical">Nguy hiểm</option>
+          <option value="high">Cao</option>
+          <option value="medium">Trung bình</option>
+          <option value="low">Thấp</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none font-medium"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="active">Chưa xử lý</option>
+          <option value="investigating">Đang điều tra</option>
+          <option value="resolved">Đã xử lý</option>
+          <option value="false_positive">Sai dương</option>
+        </select>
       </div>
 
       {/* Alerts List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-900">Danh sách cảnh báo</h3>
-            <span className="text-sm text-slate-500">{filteredAlerts.length} kết quả</span>
+      <div className="space-y-4">
+        {loading ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+            <p className="text-sm text-slate-500 mt-4">Đang tải dữ liệu...</p>
           </div>
-
-          <div className="space-y-4">
-            {filteredAlerts.map((alert) => (
-              <div key={alert.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
+        ) : filteredAlerts.length > 0 ? (
+          filteredAlerts.map((alert) => (
+            <div
+              key={alert.id}
+              className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <ShieldAlert className="w-6 h-6 text-red-600" />
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <AlertTriangle className={`w-5 h-5 ${
-                        alert.severity === 'critical' ? 'text-red-500' :
-                        alert.severity === 'high' ? 'text-red-400' :
-                        alert.severity === 'medium' ? 'text-amber-500' : 'text-green-500'
-                      }`} />
-                      <h4 className="font-semibold text-slate-900">{getTypeLabel(alert.type)}</h4>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getSeverityColor(alert.severity)}`}>
-                        {alert.severity === 'low' ? 'Thấp' :
-                         alert.severity === 'medium' ? 'Trung bình' :
-                         alert.severity === 'high' ? 'Cao' : 'Nguy hiểm'}
+                      <h3 className="font-bold text-slate-900">{alert.id}</h3>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(alert.severity)}`}>
+                        {getSeverityLabel(alert.severity)}
                       </span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(alert.status)}`}>
-                        {alert.status === 'active' ? 'Hoạt động' :
-                         alert.status === 'investigating' ? 'Điều tra' :
-                         alert.status === 'resolved' ? 'Đã xử lý' : 'Sai dương tính'}
-                      </span>
+                      {getStatusBadge(alert.status)}
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{alert.customer.name}</p>
-                        <div className="flex items-center gap-4 text-sm text-slate-600 mt-1">
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-4 h-4" />
-                            {alert.customer.phone}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <User className="w-4 h-4" />
-                            {alert.customer.idNumber}
-                          </span>
+                    <p className="text-sm font-medium text-slate-700 mb-1">
+                      {getTypeLabel(alert.type)}
+                    </p>
+                    <p className="text-sm text-slate-600 mb-3">
+                      {alert.description}
+                    </p>
+                    
+                    {/* Customer Info */}
+                    <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        <span className="font-medium">{alert.customer.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        <span className="font-mono">{alert.customer.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{alert.timestamp.toLocaleString('vi-VN')}</span>
+                      </div>
+                      {alert.assignedTo && (
+                        <div className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          <span>Phụ trách: {alert.assignedTo}</span>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-600">{alert.description}</p>
-                        <p className="text-xs text-slate-500 mt-1">{formatTimeAgo(alert.timestamp)}</p>
-                      </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-wrap gap-2">
-                        {alert.evidence.slice(0, 2).map((evidence, index) => (
-                          <span key={index} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                            {evidence}
+                    {/* Evidence */}
+                    {alert.evidence.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {alert.evidence.map((ev, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium"
+                          >
+                            {ev}
                           </span>
                         ))}
-                        {alert.evidence.length > 2 && (
-                          <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                            +{alert.evidence.length - 2} nữa
-                          </span>
-                        )}
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setSelectedAlert(alert)}
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Chi tiết
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredAlerts.length === 0 && (
-            <div className="text-center py-12">
-              <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">Không tìm thấy cảnh báo</h3>
-              <p className="text-slate-600">Thử điều chỉnh bộ lọc hoặc tìm kiếm khác</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Alert Detail Modal */}
-      {selectedAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-slate-900">Chi tiết cảnh báo</h3>
-                <button
-                  onClick={() => setSelectedAlert(null)}
-                  className="p-2 hover:bg-slate-100 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-semibold text-slate-900 mb-3">Thông tin khách hàng</h4>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-medium">Họ tên:</span> {selectedAlert.customer.name}</p>
-                      <p><span className="font-medium">Số điện thoại:</span> {selectedAlert.customer.phone}</p>
-                      <p><span className="font-medium">Email:</span> {selectedAlert.customer.email || 'N/A'}</p>
-                      <p><span className="font-medium">CMND/CCCD:</span> {selectedAlert.customer.idNumber}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-slate-900 mb-3">Thông tin cảnh báo</h4>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-medium">Loại:</span> {getTypeLabel(selectedAlert.type)}</p>
-                      <p><span className="font-medium">Mức độ:</span>
-                        <span className={`ml-2 px-2 py-1 text-xs rounded-full ${getSeverityColor(selectedAlert.severity)}`}>
-                          {selectedAlert.severity === 'low' ? 'Thấp' :
-                           selectedAlert.severity === 'medium' ? 'Trung bình' :
-                           selectedAlert.severity === 'high' ? 'Cao' : 'Nguy hiểm'}
-                        </span>
-                      </p>
-                      <p><span className="font-medium">Trạng thái:</span>
-                        <span className={`ml-2 px-2 py-1 text-xs rounded-full ${getStatusColor(selectedAlert.status)}`}>
-                          {selectedAlert.status === 'active' ? 'Hoạt động' :
-                           selectedAlert.status === 'investigating' ? 'Điều tra' :
-                           selectedAlert.status === 'resolved' ? 'Đã xử lý' : 'Sai dương tính'}
-                        </span>
-                      </p>
-                      <p><span className="font-medium">Thời gian:</span> {formatTimeAgo(selectedAlert.timestamp)}</p>
-                    </div>
+                    )}
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="font-semibold text-slate-900 mb-3">Mô tả</h4>
-                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg">{selectedAlert.description}</p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-slate-900 mb-3">Bằng chứng</h4>
-                  <div className="space-y-2">
-                    {selectedAlert.evidence.map((evidence, index) => (
-                      <div key={index} className="flex items-start gap-2 text-sm">
-                        <span className="text-blue-600 font-medium mt-0.5">•</span>
-                        <span className="text-slate-700">{evidence}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {selectedAlert.resolution && (
-                  <div>
-                    <h4 className="font-semibold text-slate-900 mb-3">Quyết định xử lý</h4>
-                    <p className="text-sm text-slate-700 bg-green-50 p-3 rounded-lg border-l-4 border-green-400">
-                      {selectedAlert.resolution}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <div className="flex gap-2 ml-4">
                   <button
-                    onClick={() => setSelectedAlert(null)}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-200 transition-all flex items-center gap-1"
                   >
-                    Đóng
+                    <Eye className="w-4 h-4" />
+                    Chi tiết
                   </button>
-                  {selectedAlert.status === 'active' && (
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                      Bắt đầu điều tra
+                  {alert.status === 'active' && (
+                    <button
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition-all flex items-center gap-1"
+                    >
+                      <Ban className="w-4 h-4" />
+                      Chặn
                     </button>
                   )}
                 </div>
               </div>
             </div>
+          ))
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+            <ShieldAlert className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Không tìm thấy cảnh báo</h3>
+            <p className="text-sm text-slate-500">
+              Không có cảnh báo gian lận nào phù hợp với bộ lọc của bạn.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Info Alert */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-semibold text-blue-900 text-sm mb-1">
+              Hệ thống phát hiện tự động
+            </div>
+            <p className="text-sm text-blue-800">
+              Các cảnh báo được tạo tự động bởi AI khi phát hiện hành vi bất thường: 
+              IP trùng lặp, thông tin không khớp, hoặc trùng với danh sách đen. 
+              Vui lòng xem xét và xử lý kịp thời.
+            </p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

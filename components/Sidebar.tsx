@@ -1,15 +1,16 @@
+'use client';
+
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FilePlus2, FileStack, Users, Clock, History, LogOut, ChevronRight,
   Settings, UserCheck, Shield, Calculator, BarChart3, Key, Database, FileText,
   CreditCard, CheckCircle, AlertTriangle, DollarSign, UserCog, Activity,
-  Building, FileCheck, Lock, Zap, Globe
+  Building, FileCheck, Lock, Zap, Globe, Package
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
-import { ROUTES } from '../routes';
-import logo from '../logo.png';
+import { useAuth } from '@/contexts/AuthContext';
+import { UserRole } from '@/types';
+import { ROUTES } from '@/routes';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -25,8 +26,10 @@ interface MenuItem {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
-  const navigate = useNavigate();
-  const { user, hasPermission } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const [expandedMenus, setExpandedMenus] = React.useState<string[]>([]);
 
   // Define menus for each role using ROUTES constants
   const getMenuItems = (role: UserRole): MenuItem[] => {
@@ -63,6 +66,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
             { id: ROUTES.ADMIN.LOANS_REJECTED, label: 'Từ chối', icon: AlertTriangle },
           ]
         },
+        { id: ROUTES.ADMIN.LOAN_PRODUCTS, label: 'Sản phẩm vay', icon: Package },
+        { id: ROUTES.ADMIN.DOCUMENTS, label: 'Tài liệu & Templates', icon: FileText },
+        { id: ROUTES.ADMIN.PAYMENT_GATEWAY, label: 'Payment Gateway', icon: CreditCard },
+        { id: ROUTES.ADMIN.RISK_MANAGEMENT, label: 'Risk Management', icon: Shield },
+        { id: ROUTES.ADMIN.BULK_OPERATIONS, label: 'Bulk Operations', icon: Zap },
         { id: ROUTES.ADMIN.CUSTOMERS, label: 'Quản lý Customers', icon: Users },
         { id: ROUTES.ADMIN.COMMISSION_SETTINGS, label: 'Cài đặt Commission', icon: DollarSign },
         { id: ROUTES.ADMIN.AUDIT_LOG, label: 'Audit Log', icon: Activity },
@@ -121,13 +129,75 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
       it: [
         { id: ROUTES.IT.DASHBOARD, label: 'IT Dashboard', icon: LayoutDashboard },
         { id: ROUTES.IT.SYSTEM_MONITORING, label: 'System Monitoring', icon: Activity },
-        { id: ROUTES.IT.DATABASE_STATUS, label: 'Database Status', icon: Database },
-        { id: ROUTES.IT.API_STATUS, label: 'API Status', icon: Globe },
+        {
+          id: 'it-database',
+          label: 'Database',
+          icon: Database,
+          children: [
+            { id: ROUTES.IT.DATABASE_STATUS, label: 'Database Status', icon: Activity },
+            { id: ROUTES.IT.DATABASE_MANAGEMENT, label: 'Database Management', icon: Database },
+          ]
+        },
+        {
+          id: 'it-api',
+          label: 'API',
+          icon: Globe,
+          children: [
+            { id: ROUTES.IT.API_STATUS, label: 'API Status', icon: Activity },
+            { id: ROUTES.IT.API_MANAGEMENT, label: 'API Management', icon: Key },
+          ]
+        },
+        { id: ROUTES.IT.SECURITY_MANAGEMENT, label: 'Security Management', icon: Shield },
+        { id: ROUTES.IT.SCHEDULER, label: 'Scheduler', icon: Clock },
         { id: ROUTES.IT.ERROR_LOGS, label: 'Error Logs', icon: AlertTriangle },
         { id: ROUTES.IT.AUDIT_LOGS, label: 'Audit Logs', icon: Activity },
         { id: ROUTES.IT.PERFORMANCE, label: 'Performance', icon: BarChart3 },
         { id: ROUTES.IT.SETTINGS, label: 'IT Settings', icon: Settings },
       ],
+      legal: [
+        { id: ROUTES.LEGAL.DASHBOARD, label: 'Dashboard Pháp chế', icon: LayoutDashboard },
+        {
+          id: 'legal-cases',
+          label: 'Vụ việc pháp lý',
+          icon: FileText,
+          children: [
+            { id: ROUTES.LEGAL.CASES, label: 'Tất cả vụ việc', icon: FileStack },
+            { id: ROUTES.LEGAL.PENDING_CASES, label: 'Chờ xử lý', icon: Clock },
+            { id: ROUTES.LEGAL.IN_PROGRESS, label: 'Đang xử lý', icon: Activity },
+            { id: ROUTES.LEGAL.COURT_CASES, label: 'Vụ kiện tòa án', icon: FileCheck },
+            { id: ROUTES.LEGAL.SETTLED, label: 'Đã giải quyết', icon: CheckCircle },
+          ]
+        },
+        { id: ROUTES.LEGAL.CONTRACTS, label: 'Quản lý hợp đồng', icon: FileText },
+        { id: ROUTES.LEGAL.REPORTS, label: 'Báo cáo pháp lý', icon: BarChart3 },
+      ],
+      branch_manager: [
+        { id: ROUTES.BM.DASHBOARD, label: 'Dashboard Chi nhánh', icon: LayoutDashboard },
+        { id: ROUTES.BM.LOANS, label: 'Hồ sơ vay', icon: FileStack },
+        { id: ROUTES.BM.PENDING_APPROVAL, label: 'Chờ phê duyệt', icon: Clock, badge: '5' },
+        { id: ROUTES.BM.APPROVED, label: 'Đã phê duyệt', icon: CheckCircle },
+        { id: ROUTES.BM.TEAM, label: 'Quản lý Team', icon: Users },
+        { id: ROUTES.BM.PERFORMANCE, label: 'Hiệu suất', icon: BarChart3 },
+        { id: ROUTES.BM.REPORTS, label: 'Báo cáo chi nhánh', icon: FileText },
+      ],
+      collection: [
+        { id: ROUTES.CO.DASHBOARD, label: 'Dashboard Thu hồi', icon: LayoutDashboard },
+        {
+          id: 'co-overdue',
+          label: 'Nợ quá hạn',
+          icon: AlertTriangle,
+          children: [
+            { id: ROUTES.CO.OVERDUE, label: 'Tất cả nợ quá hạn', icon: FileStack },
+            { id: ROUTES.CO.MINOR_OVERDUE, label: 'Quá hạn nhẹ (1-30 ngày)', icon: Clock },
+            { id: ROUTES.CO.SEVERE_OVERDUE, label: 'Quá hạn nghiêm trọng (31-90 ngày)', icon: AlertTriangle },
+            { id: ROUTES.CO.LEGAL_ACTION, label: 'Xử lý pháp lý (>90 ngày)', icon: FileCheck },
+          ]
+        },
+        { id: ROUTES.CO.RECOVERED, label: 'Đã thu hồi', icon: CheckCircle },
+        { id: ROUTES.CO.REPORTS, label: 'Báo cáo thu hồi', icon: BarChart3 },
+        { id: ROUTES.CO.HISTORY, label: 'Lịch sử liên hệ', icon: History },
+      ],
+      system: [],
     };
 
     return baseMenus[role] || [];
@@ -135,16 +205,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
 
   const menuItems = user ? getMenuItems(user.role) : [];
 
+  // Debug logging
+  React.useEffect(() => {
+    if (user) {
+      console.log('=== SIDEBAR DEBUG ===');
+      console.log('User:', user);
+      console.log('User role:', user.role);
+      console.log('Menu items count:', menuItems.length);
+      console.log('Menu items:', menuItems);
+      console.log('===================');
+    }
+  }, [user?.role]);
+
   const renderMenuItem = (item: MenuItem, level = 0) => {
-    const currentPath = window.location.pathname;
+    const currentPath = pathname || '';
     const isActive = currentPath === `/${item.id}` || (item.children && item.children.some(child => currentPath === `/${child.id}`));
     const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedMenus.includes(item.id);
     const paddingLeft = level * 12 + 12; // Indent for sub-menu items
+
+    const handleClick = () => {
+      if (hasChildren) {
+        // Toggle expand/collapse for parent menu
+        setExpandedMenus(prev => 
+          prev.includes(item.id) 
+            ? prev.filter(id => id !== item.id)
+            : [...prev, item.id]
+        );
+      } else {
+        // Navigate for leaf menu items
+        router.push(`/${item.id}`);
+      }
+    };
 
     return (
       <div key={item.id}>
         <button
-          onClick={() => navigate(`/${item.id}`)}
+          onClick={handleClick}
           className={`
             w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group border border-transparent font-medium text-left
             ${isActive
@@ -167,12 +264,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
                 {item.badge}
               </span>
             )}
-            {isActive && <ChevronRight className="w-4 h-4 text-white/50 flex-shrink-0" />}
+            {hasChildren && (
+              <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''} ${isActive ? 'text-white/50' : 'text-slate-400'}`} />
+            )}
+            {!hasChildren && isActive && <ChevronRight className="w-4 h-4 text-white/50 flex-shrink-0" />}
           </div>
         </button>
 
         {/* Render children if expanded */}
-        {hasChildren && isActive && (
+        {hasChildren && isExpanded && (
           <div className="ml-4 mt-1 space-y-1">
             {item.children!.map((child) => renderMenuItem(child, level + 1))}
           </div>
@@ -186,7 +286,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
       {/* Brand */}
       <div className="h-16 flex items-center px-6 bg-white border-b border-slate-100">
         <img
-          src={logo}
+          src="/logo.png"
           alt="Mini-LMS Logo"
           className="w-8 h-8 object-contain mr-3"
         />
@@ -201,10 +301,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
            user?.role === 'security' ? 'Security & Fraud' :
            user?.role === 'assessment' ? 'Credit Assessment' :
            user?.role === 'accountant' ? 'Accounting & Disbursement' :
+           user?.role === 'collection' ? 'Collection & Recovery' :
+           user?.role === 'legal' ? 'Legal & Compliance' :
+           user?.role === 'branch_manager' ? 'Branch Management' :
            user?.role === 'customer' ? 'Customer Portal' :
            user?.role === 'it' ? 'IT Support & Monitoring' : 'Main Menu'}
         </div>
-        {menuItems.map((item) => renderMenuItem(item))}
+        {menuItems.length > 0 ? (
+          menuItems.map((item) => renderMenuItem(item))
+        ) : (
+          <div className="px-3 py-4 text-xs text-slate-500">
+            {user ? `No menu items for role: ${user.role}` : 'Loading...'}
+          </div>
+        )}
       </nav>
 
       {/* User Info */}
@@ -224,6 +333,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
                user?.role === 'security' ? 'Security' :
                user?.role === 'assessment' ? 'Credit Assessment' :
                user?.role === 'accountant' ? 'Accountant' :
+               user?.role === 'collection' ? 'Collection Officer' :
+               user?.role === 'legal' ? 'Legal Officer' :
+               user?.role === 'branch_manager' ? 'Branch Manager' :
                user?.role === 'customer' ? 'Customer' :
                user?.role === 'it' ? 'IT Support' : user?.role}
             </p>

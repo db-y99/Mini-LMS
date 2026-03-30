@@ -1,0 +1,10 @@
+export { AdminDashboardView } from '@/components/admin/AdminDashboardView';
+export { UserManagementView } from '@/components/admin/UserManagementView';
+export { CommissionSettingsView } from '@/components/admin/CommissionSettingsView';
+export { AdminReportsView } from '@/components/admin/AdminReportsView';
+export { AdminSystemSettingsView } from '@/components/admin/AdminSystemSettingsView';
+export { AdminCacheManagementView } from '@/components/admin/AdminCacheManagementView';
+export { AdminCmsIntegrationView } from '@/components/admin/AdminCmsIntegrationView';
+export { BranchManagementView } from '@/components/admin/BranchManagementView';
+export { BranchLoansView } from '@/components/admin/BranchLoansView';
+export { BranchAssignmentView } from '@/components/admin/BranchAssignmentView';

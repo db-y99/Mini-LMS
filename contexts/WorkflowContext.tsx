@@ -1,3 +1,4 @@
+'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   LoanApplication,
@@ -10,7 +11,9 @@ import {
 } from '../types';
 import { useAudit } from './AuditContext';
 import { useAuth } from './AuthContext';
-import { storageService } from '../services/storageService';
+import { loanModule } from '@modules';
+import { STATE_TRANSITIONS, getAllowedTransitions as getDocTransitions } from '../state-machine/transitions';
+import { matchesStatus, normalizeStatus, toLegacyStatus } from '../constants/status';
 
 // Workflow steps definition
 const WORKFLOW_STEPS: WorkflowStep[] = [
@@ -66,142 +69,12 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
   }
 ];
 
-// Workflow transitions
-const WORKFLOW_TRANSITIONS: WorkflowTransition[] = [
-  // Draft -> Pending CSKH or Assessment
-  {
-    fromStatus: 'draft',
-    toStatus: 'pending_cskh',
-    allowedRoles: ['cskh'],
-    requiresApproval: false,
-    autoTransition: false
-  },
-  {
-    fromStatus: 'draft',
-    toStatus: 'pending_assessment',
-    allowedRoles: ['cskh'],
-    requiresApproval: false,
-    autoTransition: false
-  },
-  // CSKH -> Assessment
-  {
-    fromStatus: 'pending_cskh',
-    toStatus: 'pending_assessment',
-    allowedRoles: ['cskh'],
-    requiresApproval: false,
-    autoTransition: true
-  },
-  // Assessment -> Security (for phone) or Admin (for other assets) or Reject
-  {
-    fromStatus: 'pending_assessment',
-    toStatus: 'pending_security',
-    allowedRoles: ['assessment'],
-    requiresApproval: true,
-    conditions: ['collateralType === "phone"'] // Only for phone assets
-  },
-  {
-    fromStatus: 'pending_assessment',
-    toStatus: 'pending_admin',
-    allowedRoles: ['assessment'],
-    requiresApproval: true,
-    conditions: ['collateralType !== "phone"'] // For non-phone assets
-  },
-  {
-    fromStatus: 'pending_assessment',
-    toStatus: 'rejected',
-    allowedRoles: ['assessment'],
-    requiresApproval: true
-  },
-  // Assessment -> CSKH (yêu cầu bổ sung hồ sơ)
-  {
-    fromStatus: 'pending_assessment',
-    toStatus: 'pending_cskh_supplement',
-    allowedRoles: ['assessment'],
-    requiresApproval: true
-  },
-  // CSKH bổ sung xong -> Assessment lại
-  {
-    fromStatus: 'pending_cskh_supplement',
-    toStatus: 'pending_assessment',
-    allowedRoles: ['cskh'],
-    requiresApproval: false,
-    autoTransition: true
-  },
-  // Security -> Admin or Reject
-  {
-    fromStatus: 'pending_security',
-    toStatus: 'pending_admin',
-    allowedRoles: ['security'],
-    requiresApproval: true
-  },
-  {
-    fromStatus: 'pending_security',
-    toStatus: 'rejected',
-    allowedRoles: ['security'],
-    requiresApproval: true
-  },
-  // Admin -> Disbursement or Reject
-  {
-    fromStatus: 'pending_admin',
-    toStatus: 'pending_disbursement',
-    allowedRoles: ['admin'],
-    requiresApproval: true
-  },
-  {
-    fromStatus: 'pending_admin',
-    toStatus: 'rejected',
-    allowedRoles: ['admin'],
-    requiresApproval: true
-  },
-  // Accountant -> Disbursed
-  {
-    fromStatus: 'pending_disbursement',
-    toStatus: 'disbursed',
-    allowedRoles: ['accountant'],
-    requiresApproval: false
-  },
-  // Cancel transitions - CSKH can cancel at early stages
-  {
-    fromStatus: 'pending_cskh',
-    toStatus: 'cancelled',
-    allowedRoles: ['cskh', 'admin'],
-    requiresApproval: true
-  },
-  {
-    fromStatus: 'pending_cskh_supplement',
-    toStatus: 'cancelled',
-    allowedRoles: ['cskh', 'admin'],
-    requiresApproval: true
-  },
-  // Cancel transitions - Assessment can cancel
-  {
-    fromStatus: 'pending_assessment',
-    toStatus: 'cancelled',
-    allowedRoles: ['assessment', 'admin'],
-    requiresApproval: true
-  },
-  // Cancel transitions - Security can cancel
-  {
-    fromStatus: 'pending_security',
-    toStatus: 'cancelled',
-    allowedRoles: ['security', 'admin'],
-    requiresApproval: true
-  },
-  // Cancel transitions - Admin can cancel
-  {
-    fromStatus: 'pending_admin',
-    toStatus: 'cancelled',
-    allowedRoles: ['admin'],
-    requiresApproval: true
-  },
-  // Cancel transitions - Accountant/Admin can cancel before disbursement
-  {
-    fromStatus: 'pending_disbursement',
-    toStatus: 'cancelled',
-    allowedRoles: ['accountant', 'admin'],
-    requiresApproval: true
-  }
-];
+// Workflow transitions (source of truth from state-machine/transitions)
+const WORKFLOW_TRANSITIONS: WorkflowTransition[] = STATE_TRANSITIONS.map(t => ({
+  ...t,
+  fromStatus: t.fromStatus,
+  toStatus: t.toStatus
+})) as WorkflowTransition[];
 
 interface WorkflowContextType {
   workflowSteps: WorkflowStep[];
@@ -239,20 +112,15 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
   useEffect(() => {
     const loadLoans = async () => {
       try {
-        const storedLoans = await storageService.getLoans();
-        
+        const storedLoans = await loanModule.getLoans();
+
         // Filter out mock loans (LOAN001, LOAN002, LOAN003) if they exist
         const mockLoanIds = ['LOAN001', 'LOAN002', 'LOAN003'];
         const hasMockData = storedLoans.some(loan => mockLoanIds.includes(loan.id));
-        
+
         if (hasMockData) {
           // Remove mock loans and save cleaned data
           const cleanedLoans = storedLoans.filter(loan => !mockLoanIds.includes(loan.id));
-          // Clear all and save only cleaned loans
-          await storageService.clearLoans();
-          for (const loan of cleanedLoans) {
-            await storageService.saveLoan(loan);
-          }
           setLoans(cleanedLoans);
         } else {
           setLoans(storedLoans);
@@ -269,7 +137,21 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
   }, []);
 
   const pendingLoans = loans.filter(loan =>
-    ['pending_cskh', 'pending_cskh_supplement', 'pending_assessment', 'pending_security', 'pending_admin', 'pending_disbursement'].includes(loan.status)
+    matchesStatus(loan.status, [
+      'pending_cskh',
+      'pending_cskh_supplement',
+      'pending_assessment',
+      'pending_security',
+      'pending_admin',
+      'pending_disbursement',
+      'SUBMITTED',
+      'NEED_ADDITIONAL_INFO',
+      'UNDER_ASSESSMENT',
+      'REQUIRE_DEVICE_LOCK',
+      'REQUIRE_COLLATERAL_CONFIRMATION',
+      'READY_FOR_DISBURSEMENT',
+      'DISBURSEMENT_DRAFTED'
+    ])
   );
 
   const getLoansByStatus = (status: LoanStatus): LoanApplication[] => {
@@ -279,15 +161,27 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
   const getLoansByRole = (role: UserRole): LoanApplication[] => {
     switch (role) {
       case 'cskh':
-        return loans.filter(loan => ['draft', 'pending_cskh', 'pending_cskh_supplement'].includes(loan.status));
+        return loans.filter(loan =>
+          matchesStatus(loan.status, ['draft', 'pending_cskh', 'pending_cskh_supplement', 'DRAFT', 'SUBMITTED', 'NEED_ADDITIONAL_INFO'])
+        );
       case 'assessment':
-        return loans.filter(loan => loan.status === 'pending_assessment');
+        return loans.filter(loan => matchesStatus(loan.status, ['pending_assessment', 'UNDER_ASSESSMENT']));
       case 'security':
-        return loans.filter(loan => loan.status === 'pending_security');
+        return loans.filter(loan => matchesStatus(loan.status, ['pending_security', 'REQUIRE_DEVICE_LOCK']));
       case 'admin':
-        return loans.filter(loan => loan.status === 'pending_admin');
+        return loans.filter(loan =>
+          matchesStatus(loan.status, [
+            'pending_admin',
+            'ASSESSMENT_APPROVED',
+            'REQUIRE_COLLATERAL_CONFIRMATION',
+            'COLLATERAL_CONFIRMED',
+            'DISBURSEMENT_DRAFTED'
+          ])
+        );
       case 'accountant':
-        return loans.filter(loan => loan.status === 'pending_disbursement');
+        return loans.filter(loan =>
+          matchesStatus(loan.status, ['pending_disbursement', 'READY_FOR_DISBURSEMENT', 'DISBURSEMENT_DRAFTED', 'DISBURSEMENT_APPROVED'])
+        );
       default:
         return [];
     }
@@ -295,6 +189,7 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
 
   const createLoan = async (loan: LoanApplication): Promise<boolean> => {
     try {
+      const canonicalStatus = normalizeStatus(loan.status);
       await logAction({
         userId: user?.id || loan.createdBy,
         userName: user?.fullName || loan.createdBy,
@@ -303,7 +198,7 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
         resourceType: 'loan',
         resourceId: loan.id,
         newValues: {
-          status: loan.status,
+          status: canonicalStatus,
           loanAmount: loan.loanAmount,
           customerId: loan.customerId
         },
@@ -312,11 +207,11 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
         }
       });
 
-      setLoans(prevLoans => [...prevLoans, loan]);
-      
+      setLoans(prevLoans => [...prevLoans, { ...loan, canonicalStatus }]);
+
       // Save to localStorage
-      await storageService.saveLoan(loan);
-      
+      await loanModule.createLoan({ ...loan, canonicalStatus });
+
       return true;
     } catch (error) {
       console.error('Failed to create loan:', error);
@@ -328,6 +223,8 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
     try {
       const loan = loans.find(l => l.id === loanId);
       if (!loan) return false;
+      const canonicalStatus = normalizeStatus(newStatus);
+      const legacyFriendlyStatus = toLegacyStatus(canonicalStatus);
 
       // Log audit action
       await logAction({
@@ -339,8 +236,8 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
         resourceId: loanId,
         oldValues: { status: loan.status },
         newValues: {
-          status: newStatus,
-          ...(newStatus === 'rejected' && { rejectionReason: notes })
+          status: canonicalStatus,
+          ...(canonicalStatus === 'BAD_DEBT' && { rejectionReason: notes })
         },
         metadata: { notes }
       });
@@ -349,10 +246,11 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
         if (loan.id === loanId) {
           const updated: LoanApplication = {
             ...loan,
-            status: newStatus,
+            status: legacyFriendlyStatus,
+            canonicalStatus,
             updatedAt: new Date(),
-            ...(newStatus === 'disbursed' && { disbursedAt: new Date(), disbursedBy: userId }),
-            ...(newStatus === 'rejected' && { rejectedAt: new Date(), rejectedBy: userId, rejectionReason: notes })
+            ...(canonicalStatus === 'DISBURSED' && { disbursedAt: new Date(), disbursedBy: userId }),
+            ...(canonicalStatus === 'BAD_DEBT' && { rejectedAt: new Date(), rejectedBy: userId, rejectionReason: notes })
           };
           // Preserve supplementRequest if it exists (when updating from supplement view)
           if (loan.supplementRequest) {
@@ -362,15 +260,15 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
         }
         return loan;
       });
-      
+
       setLoans(updatedLoans);
-      
-      // Save updated loan to localStorage
+
+      // Save updated loan to storage
       const updatedLoan = updatedLoans.find(l => l.id === loanId);
       if (updatedLoan) {
-        await storageService.saveLoan(updatedLoan);
+        await loanModule.updateLoan(loanId, updatedLoan);
       }
-      
+
       return true;
     } catch (error) {
       console.error('Failed to update loan status:', error);
@@ -383,21 +281,21 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
       const updatedLoans = loans.map(loan =>
         loan.id === loanId
           ? {
-              ...loan,
-              assignedTo: userId,
-              assignedBy: userId, // In real app, this would be current user
-              assignedAt: new Date(),
-              updatedAt: new Date()
-            }
+            ...loan,
+            assignedTo: userId,
+            assignedBy: userId, // In real app, this would be current user
+            assignedAt: new Date(),
+            updatedAt: new Date()
+          }
           : loan
       );
-      
+
       setLoans(updatedLoans);
-      
+
       // Save updated loan to localStorage
       const updatedLoan = updatedLoans.find(l => l.id === loanId);
       if (updatedLoan) {
-        await storageService.saveLoan(updatedLoan);
+        await loanModule.updateLoan(loanId, updatedLoan);
       }
       return true;
     } catch (error) {
@@ -411,22 +309,22 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
       const updatedLoans = loans.map(loan =>
         loan.id === loanId
           ? {
-              ...loan,
-              assessmentReport: report,
-              riskScore: report.riskLevel === 'low' ? 85 : report.riskLevel === 'medium' ? 65 : 35,
-              updatedAt: new Date()
-            }
+            ...loan,
+            assessmentReport: report,
+            riskScore: report.riskLevel === 'low' ? 85 : report.riskLevel === 'medium' ? 65 : 35,
+            updatedAt: new Date()
+          }
           : loan
       );
-      
+
       setLoans(updatedLoans);
-      
+
       // Save updated loan to localStorage
       const updatedLoan = updatedLoans.find(l => l.id === loanId);
       if (updatedLoan) {
-        await storageService.saveLoan(updatedLoan);
+        await loanModule.updateLoan(loanId, updatedLoan);
       }
-      
+
       return true;
     } catch (error) {
       console.error('Failed to submit assessment report:', error);
@@ -439,21 +337,21 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
       const updatedLoans = loans.map(loan =>
         loan.id === loanId
           ? {
-              ...loan,
-              securityCheckStatus: check.status === 'passed' ? 'passed' : 'failed',
-              updatedAt: new Date()
-            }
+            ...loan,
+            securityCheckStatus: (check.status === 'passed' ? 'passed' : 'failed') as 'pending' | 'passed' | 'failed',
+            updatedAt: new Date()
+          }
           : loan
-      );
-      
+      ) as LoanApplication[];
+
       setLoans(updatedLoans);
-      
+
       // Save updated loan to localStorage
       const updatedLoan = updatedLoans.find(l => l.id === loanId);
       if (updatedLoan) {
-        await storageService.saveLoan(updatedLoan);
+        await loanModule.updateLoan(loanId, updatedLoan);
       }
-      
+
       return true;
     } catch (error) {
       console.error('Failed to submit security check:', error);
@@ -472,34 +370,22 @@ export const WorkflowProvider: React.FC<WorkflowProviderProps> = ({ children }) 
   };
 
   const getAllowedTransitions = (currentStatus: LoanStatus, userRole: UserRole, loan?: LoanApplication): WorkflowTransition[] => {
-    return WORKFLOW_TRANSITIONS.filter(transition => {
-      // Check basic conditions
-      if (transition.fromStatus !== currentStatus || !transition.allowedRoles.includes(userRole)) {
-        return false;
-      }
-      
-      // Check conditional transitions based on loan collateral type
-      if (transition.conditions && loan) {
-        for (const condition of transition.conditions) {
-          if (condition === 'collateralType === "phone"') {
-            if (loan.collateralType !== 'phone') return false;
-          } else if (condition === 'collateralType !== "phone"') {
-            if (loan.collateralType === 'phone') return false;
-          }
-        }
-      }
-      
-      return true;
-    });
+    const transitions = getDocTransitions(currentStatus, userRole, { loan_type: loan?.loanType });
+    return transitions as unknown as WorkflowTransition[];
   };
 
   const getStepIdFromStatus = (status: LoanStatus): string => {
-    switch (status) {
-      case 'pending_cskh': return 'cskh_create';
-      case 'pending_assessment': return 'assessment_review';
-      case 'pending_security': return 'security_check';
-      case 'pending_admin': return 'admin_approval';
-      case 'pending_disbursement': return 'accountant_disbursement';
+    const canonical = normalizeStatus(status);
+    switch (canonical) {
+      case 'SUBMITTED': return 'cskh_create';
+      case 'UNDER_ASSESSMENT': return 'assessment_review';
+      case 'REQUIRE_DEVICE_LOCK': return 'security_check';
+      case 'ASSESSMENT_APPROVED':
+      case 'REQUIRE_COLLATERAL_CONFIRMATION':
+      case 'COLLATERAL_CONFIRMED':
+      case 'READY_FOR_DISBURSEMENT':
+      case 'DISBURSEMENT_DRAFTED': return 'admin_approval';
+      case 'DISBURSEMENT_APPROVED': return 'accountant_disbursement';
       default: return '';
     }
   };

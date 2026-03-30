@@ -1,8 +1,10 @@
+'use client';
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import {
   Users, FilePlus2, FileStack, Clock, CheckCircle, AlertTriangle,
-  TrendingUp, TrendingDown, BarChart3, Target, Zap
+  TrendingUp, TrendingDown, BarChart3, Target, Zap, Phone
 } from 'lucide-react';
 import { DashboardStat, LoanApplication, Customer } from '../../types';
 import { useWorkflow } from '../../contexts/WorkflowContext';
@@ -28,7 +30,7 @@ interface RecentActivity {
 }
 
 export const CskhDashboardView: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { loans, refreshLoans } = useWorkflow();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -281,7 +283,7 @@ export const CskhDashboardView: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {dashboardStats.map((stat, index) => {
-          const Icon = getIcon(stat.icon);
+          const Icon = getIcon(stat.icon ?? 'FileText');
           return (
             <div key={index} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
@@ -318,7 +320,7 @@ export const CskhDashboardView: React.FC = () => {
           </div>
           <div className="flex justify-center">
             <button 
-              onClick={() => navigate('/cs/create-loan')}
+              onClick={() => router.push('/cs/create-loan')}
               className="p-6 border-2 border-blue-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all group shadow-sm hover:shadow-md"
             >
               <FilePlus2 className="w-8 h-8 text-blue-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />

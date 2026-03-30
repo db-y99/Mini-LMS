@@ -1,11 +1,12 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
   CreditCard, AlertTriangle, CheckCircle, Clock, DollarSign,
   Search, Filter, Download, Eye, Calendar, TrendingUp,
   TrendingDown, User, Phone, MapPin, ChevronDown, X, List
 } from 'lucide-react';
-import { PaymentScheduleView } from '../PaymentScheduleView';
-import { PaymentSchedule, PaymentScheduleItem } from '../types';
+import { PaymentScheduleView } from '@/components/PaymentScheduleView';
+import { PaymentSchedule, PaymentScheduleItem } from '@/types';
 
 interface LoanRepayment {
   id: string;

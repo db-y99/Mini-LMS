@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
   Users, UserPlus, Edit, Trash2, Search, Filter,

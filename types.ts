@@ -1,19 +1,28 @@
 // ========== BASIC TYPES ==========
+import { LoanStatus, CanonicalLoanStatus, LegacyLoanStatus } from './constants/status';
+import { UserRoleCode } from './constants/roles';
+
 export type CollateralType = 'car' | 'bike' | 'phone' | 'computer' | 'house' | 'land' | 'other';
 
-export type LoanStatus =
-  | 'draft'           // Nháp
-  | 'pending_cskh'    // Chờ CSKH xử lý
-  | 'pending_cskh_supplement' // Chờ CSKH bổ sung hồ sơ
-  | 'pending_assessment' // Chờ thẩm định
-  | 'pending_security'   // Chờ kiểm tra bảo mật
-  | 'pending_admin'      // Chờ phê duyệt admin
-  | 'pending_disbursement' // Chờ giải ngân
-  | 'disbursed'       // Đã giải ngân
-  | 'rejected'        // Từ chối
-  | 'cancelled';      // Hủy
+export type UserRole = UserRoleCode;
+export type { LoanStatus, CanonicalLoanStatus, LegacyLoanStatus };
 
-export type UserRole = 'admin' | 'cskh' | 'security' | 'assessment' | 'accountant' | 'customer' | 'it';
+export interface Branch {
+  id: string;
+  code: string;
+  name: string;
+  province: string;
+  address: string;
+  phone: string;
+  managerId?: string;
+  managerName?: string;
+  approvalLimit: number; // Giới hạn phê duyệt (VND)
+  region?: 'North' | 'Central' | 'South';
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+}
 
 export type Permission =
   | 'create_loan'
@@ -126,8 +135,10 @@ export interface Customer {
 
 export interface LoanApplication {
   id: string;
+  branchId?: string;
   customerId: string;
   customer: Customer;
+  loanType?: 'DEVICE' | 'COLLATERAL';
 
   // Loan details
   collateralType: CollateralType;
@@ -163,17 +174,55 @@ export interface LoanApplication {
 
   // Status & workflow
   status: LoanStatus;
+  canonicalStatus?: CanonicalLoanStatus;
+  legacyStatus?: LegacyLoanStatus;
   currentStep: string;
   assignedTo?: string; // User ID
   assignedBy?: string;
   assignedAt?: Date;
+  
+  // NEW: Version tracking
+  version: number;
+
+  // NEW: Attributes (thay vì nhiều statuses)
+  approval_level?: 'branch' | 'head_office' | 'pending';
+  rejection_stage?: 'assessment' | 'credit' | 'contract';
+  recovery_status?: 'pending' | 'legal' | 'sold' | 'recovered';
+
+  // NEW: Computed fields
+  dpd: number; // Days Past Due (computed)
+  overdue_level: 'none' | 'minor' | 'severe' | 'collection'; // Computed from DPD
+  is_expired: boolean; // Contract expired (computed)
+
+  // NEW: Overlay states (behavioral locks)
+  is_frozen: boolean;
+  frozen_reason?: string;
+  frozen_at?: Date;
+  frozen_by?: string;
+  frozen_from_status?: CanonicalLoanStatus;
+
+  // NEW: Branch control
+  approved_by_branch?: string;
+  approved_by_head_office?: string;
+
+  // NEW: Risk profile
+  risk_score: number; // 0-1000
+  risk_grade: 'A' | 'B' | 'C' | 'D' | 'E';
+  pd: number; // Probability of Default (0-1)
+  lgd: number; // Loss Given Default (0-1)
+  ecl: number; // Expected Credit Loss
+  ecl_stage: 1 | 2 | 3; // IFRS 9
+
+  // NEW: Contract tracking
+  contract_sent_at?: Date;
+  contract_expires_at?: Date;
 
   // Documents
   documents: DocumentUpload[];
   referralCode?: string;
 
   // Processing
-  riskScore?: number;
+  riskScore?: number; // DEPRECATED: Use risk_score instead
   securityCheckStatus?: 'pending' | 'passed' | 'failed';
   assessmentReport?: AssessmentReport;
   internalNotes?: string;
@@ -183,6 +232,9 @@ export interface LoanApplication {
     requestedAt: Date;
     reason: string; // Lý do yêu cầu bổ sung
   };
+  
+  // NEW: Disbursement tracking
+  disbursement_processing_started_at?: Date;
 
   // Financial
   commissionAmount?: number;
@@ -213,6 +265,28 @@ export interface DocumentUpload {
   verified?: boolean;
   verifiedBy?: string;
   verifiedAt?: Date;
+}
+
+// ========== CONTRACT & DISBURSEMENT ==========
+export interface Contract {
+  id: string;
+  loanId: string;
+  contractNo: string;
+  status: 'SENT' | 'SIGNED' | 'REJECTED';
+  signedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface Disbursement {
+  id: string;
+  loanId: string;
+  amount: number;
+  bankAccount: string;
+  status: 'DRAFT' | 'APPROVED' | 'DISBURSED';
+  createdBy: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ========== ASSESSMENT & SECURITY ==========

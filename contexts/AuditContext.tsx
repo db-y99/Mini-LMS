@@ -1,10 +1,11 @@
+'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuditLogEntry, UserRole } from '../types';
 import { storageService } from '../services/storageService';
 
 interface AuditContextType {
   auditLogs: AuditLogEntry[];
-  logAction: (action: AuditLogEntry) => Promise<boolean>;
+  logAction: (action: Omit<AuditLogEntry, 'id' | 'timestamp'>) => Promise<boolean>;
   getLogsByUser: (userId: string) => AuditLogEntry[];
   getLogsByResource: (resourceType: string, resourceId?: string) => AuditLogEntry[];
   getLogsByDateRange: (startDate: Date, endDate: Date) => AuditLogEntry[];
@@ -60,7 +61,7 @@ export const AuditProvider: React.FC<AuditProviderProps> = ({ children }) => {
 
   // Note: We save individual logs in logAction, so no need for useEffect here
 
-  const logAction = async (action: AuditLogEntry): Promise<boolean> => {
+  const logAction = async (action: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<boolean> => {
     try {
       const newLog: AuditLogEntry = {
         ...action,

@@ -1,8 +1,9 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
   BarChart3, TrendingUp, TrendingDown, Download, Calendar,
   DollarSign, CreditCard, Users, FileText, PieChart,
-  ChevronDown, Filter, Eye, Target, Activity
+  ChevronDown, Filter, Eye, Target, Activity, AlertTriangle
 } from 'lucide-react';
 
 interface FinancialMetric {
@@ -19,6 +20,7 @@ interface MonthlyData {
   repayments: number;
   commissions: number;
   revenue: number;
+  loans?: number;
 }
 
 export const FinancialReportsView: React.FC = () => {

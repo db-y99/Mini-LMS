@@ -1,9 +1,10 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
   FileSearch, Download, Eye, Search, Filter, Calendar,
   TrendingUp, TrendingDown, BarChart3, PieChart, FileText,
   CheckCircle, XCircle, Clock, AlertTriangle, Star,
-  DollarSign, Users, Target, Zap, Printer
+  DollarSign, Users, Target, Zap, Printer, X
 } from 'lucide-react';
 import { AssessmentReport } from '../../types';
 

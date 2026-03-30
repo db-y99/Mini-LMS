@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { Search, Filter, Download, MoreHorizontal, Eye, ChevronLeft, ChevronRight, ArrowUpDown, Calendar, CheckCircle2, Clock, XCircle, Car, Bike, Smartphone, Monitor, FileText } from 'lucide-react';
 import { useWorkflow } from '../contexts/WorkflowContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,13 +22,13 @@ interface LoanDisplayItem {
 export const LoanListView: React.FC = () => {
   const { loans, refreshLoans } = useWorkflow();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   const handleViewDetail = (loanId: string) => {
-    navigate(`/cs/loans/${loanId}`);
+    router.push(`/cs/loans/${loanId}`);
   };
 
   // Convert loan data to display format

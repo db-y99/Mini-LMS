@@ -15,6 +15,11 @@ export const ROUTES = {
     LOANS_PENDING: 'admin/loans-pending',
     LOANS_APPROVED: 'admin/loans-approved',
     LOANS_REJECTED: 'admin/loans-rejected',
+    LOAN_PRODUCTS: 'admin/loan-products',
+    DOCUMENTS: 'admin/documents',
+    PAYMENT_GATEWAY: 'admin/payment-gateway',
+    RISK_MANAGEMENT: 'admin/risk-management',
+    BULK_OPERATIONS: 'admin/bulk-operations',
     CUSTOMERS: 'admin/customers',
     BRANCHES: 'admin/branches',
     BRANCH_LOANS: 'admin/branch-loans',
@@ -77,11 +82,50 @@ export const ROUTES = {
     DASHBOARD: 'it/dashboard',
     SYSTEM_MONITORING: 'it/system-monitoring',
     DATABASE_STATUS: 'it/database-status',
+    DATABASE_MANAGEMENT: 'it/database-management',
     API_STATUS: 'it/api-status',
+    API_MANAGEMENT: 'it/api-management',
+    SECURITY_MANAGEMENT: 'it/security-management',
+    SCHEDULER: 'it/scheduler',
     ERROR_LOGS: 'it/error-logs',
     AUDIT_LOGS: 'it/audit-logs',
     PERFORMANCE: 'it/performance',
     SETTINGS: 'it/settings'
+  },
+
+  // ===== CO ROUTES ===== (Collection Officer - Thu hồi nợ)
+  CO: {
+    DASHBOARD: 'co/dashboard',
+    OVERDUE: 'co/overdue',
+    MINOR_OVERDUE: 'co/minor-overdue',
+    SEVERE_OVERDUE: 'co/severe-overdue',
+    LEGAL_ACTION: 'co/legal-action',
+    RECOVERED: 'co/recovered',
+    REPORTS: 'co/reports',
+    HISTORY: 'co/history'
+  },
+
+  // ===== LEGAL ROUTES ===== (Legal Officer - Pháp chế)
+  LEGAL: {
+    DASHBOARD: 'legal/dashboard',
+    CASES: 'legal/cases',
+    PENDING_CASES: 'legal/pending-cases',
+    IN_PROGRESS: 'legal/in-progress',
+    COURT_CASES: 'legal/court-cases',
+    SETTLED: 'legal/settled',
+    CONTRACTS: 'legal/contracts',
+    REPORTS: 'legal/reports'
+  },
+
+  // ===== BM ROUTES ===== (Branch Manager - Quản lý chi nhánh)
+  BM: {
+    DASHBOARD: 'bm/dashboard',
+    LOANS: 'bm/loans',
+    PENDING_APPROVAL: 'bm/pending-approval',
+    APPROVED: 'bm/approved',
+    TEAM: 'bm/team',
+    PERFORMANCE: 'bm/performance',
+    REPORTS: 'bm/reports'
   }
 } as const;
 
@@ -106,6 +150,12 @@ export const getDefaultRouteForRole = (role: string) => {
       return ROUTES.CUSTOMER.SIGN_CONTRACT;
     case 'it':
       return ROUTES.IT.DASHBOARD;
+    case 'collection':
+      return ROUTES.CO.DASHBOARD;
+    case 'legal':
+      return ROUTES.LEGAL.DASHBOARD;
+    case 'branch_manager':
+      return ROUTES.BM.DASHBOARD;
     default:
       return 'dashboard';
   }
@@ -119,6 +169,9 @@ export const getRoleFromRoute = (route: string) => {
   if (route.startsWith('acc/')) return 'accountant';
   if (route.startsWith('customer/')) return 'customer';
   if (route.startsWith('it/')) return 'it';
+  if (route.startsWith('co/')) return 'collection';
+  if (route.startsWith('legal/')) return 'legal';
+  if (route.startsWith('bm/')) return 'branch_manager';
   return 'unknown';
 };
 
@@ -132,6 +185,11 @@ export const ROUTE_DESCRIPTIONS = {
   [ROUTES.ADMIN.LOANS_PENDING]: 'Hồ sơ chờ phê duyệt',
   [ROUTES.ADMIN.LOANS_APPROVED]: 'Hồ sơ đã phê duyệt',
   [ROUTES.ADMIN.LOANS_REJECTED]: 'Hồ sơ bị từ chối',
+  [ROUTES.ADMIN.LOAN_PRODUCTS]: 'Quản lý sản phẩm vay',
+  [ROUTES.ADMIN.DOCUMENTS]: 'Quản lý tài liệu & templates',
+  [ROUTES.ADMIN.PAYMENT_GATEWAY]: 'Quản lý cổng thanh toán',
+  [ROUTES.ADMIN.RISK_MANAGEMENT]: 'Quản lý rủi ro & credit scoring',
+  [ROUTES.ADMIN.BULK_OPERATIONS]: 'Thao tác hàng loạt',
   [ROUTES.ADMIN.CUSTOMERS]: 'Quản lý thông tin khách hàng',
   [ROUTES.ADMIN.BRANCHES]: 'Quản lý danh sách chi nhánh',
   [ROUTES.ADMIN.BRANCH_LOANS]: 'Theo dõi hồ sơ vay theo chi nhánh',
@@ -178,11 +236,25 @@ export const ROUTE_DESCRIPTIONS = {
   [ROUTES.IT.DASHBOARD]: 'IT Dashboard - Tổng quan hệ thống',
   [ROUTES.IT.SYSTEM_MONITORING]: 'Giám sát hệ thống',
   [ROUTES.IT.DATABASE_STATUS]: 'Trạng thái Database',
+  [ROUTES.IT.DATABASE_MANAGEMENT]: 'Quản lý Database',
   [ROUTES.IT.API_STATUS]: 'Trạng thái API',
+  [ROUTES.IT.API_MANAGEMENT]: 'Quản lý API',
+  [ROUTES.IT.SECURITY_MANAGEMENT]: 'Quản lý bảo mật',
+  [ROUTES.IT.SCHEDULER]: 'Quản lý Scheduler',
   [ROUTES.IT.ERROR_LOGS]: 'Nhật ký lỗi',
   [ROUTES.IT.AUDIT_LOGS]: 'Nhật ký kiểm toán',
   [ROUTES.IT.PERFORMANCE]: 'Hiệu suất hệ thống',
-  [ROUTES.IT.SETTINGS]: 'Cài đặt IT'
+  [ROUTES.IT.SETTINGS]: 'Cài đặt IT',
+
+  // CO (Collection Officer)
+  [ROUTES.CO.DASHBOARD]: 'Dashboard Thu hồi nợ',
+  [ROUTES.CO.OVERDUE]: 'Tất cả nợ quá hạn',
+  [ROUTES.CO.MINOR_OVERDUE]: 'Nợ quá hạn nhẹ (1-30 ngày)',
+  [ROUTES.CO.SEVERE_OVERDUE]: 'Nợ quá hạn nghiêm trọng (31-90 ngày)',
+  [ROUTES.CO.LEGAL_ACTION]: 'Xử lý pháp lý (>90 ngày)',
+  [ROUTES.CO.RECOVERED]: 'Đã thu hồi',
+  [ROUTES.CO.REPORTS]: 'Báo cáo thu hồi',
+  [ROUTES.CO.HISTORY]: 'Lịch sử thu hồi'
 
   // CUSTOMER
   // [ROUTES.CUSTOMER.SIGN_CONTRACT]: 'Khách hàng ký hợp đồng'

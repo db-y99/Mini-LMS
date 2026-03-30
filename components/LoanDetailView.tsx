@@ -1,31 +1,29 @@
+'use client';
+
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  ArrowLeft, Calendar, User, Phone, Mail, MapPin, FileText, 
-  DollarSign, Clock, CheckCircle2, XCircle, Car, Bike, Smartphone, 
-  Monitor, Home, Package, CreditCard, AlertCircle,
+import { useParams, useRouter } from 'next/navigation';
+import {
+  ArrowLeft, Calendar, User, Phone, Mail, MapPin, FileText,
+  DollarSign, Clock, CheckCircle2, XCircle, Car, Bike, Smartphone,
+  Monitor, Home, Package, CreditCard, AlertCircle, AlertTriangle,
   FileCheck, Square, Eye, X, Download, ZoomIn, ZoomOut, RotateCw,
-  ChevronLeft, ChevronRight, Maximize2, Shield, UserCheck, 
+  ChevronLeft, ChevronRight, Maximize2, Shield, UserCheck,
   ClipboardCheck, Banknote, List
 } from 'lucide-react';
-import { useWorkflow } from '../contexts/WorkflowContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useWorkflow } from '@/contexts/WorkflowContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { LoanApplication, DocumentUpload, PaymentSchedule, PaymentScheduleItem } from '../types';
 import { PaymentScheduleView } from './PaymentScheduleView';
 
 export const LoanDetailView: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
+  const router = useRouter();
   const { loans } = useWorkflow();
   const { user } = useAuth();
 
   const getBackRoute = () => {
-    // If coming from a specific route, go back to that
-    if (location.state?.from) {
-      return location.state.from;
-    }
-    // Otherwise, use role-based default
+    // Use role-based default
     if (user?.role === 'assessment') return '/ca/pending';
     if (user?.role === 'security') return '/sec/pending-checks';
     if (user?.role === 'admin') return '/admin/loans-pending';
@@ -91,7 +89,7 @@ export const LoanDetailView: React.FC = () => {
   // Keyboard shortcuts for zoom
   useEffect(() => {
     if (!previewDocs) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === '=' || e.key === '+') {
@@ -139,7 +137,7 @@ export const LoanDetailView: React.FC = () => {
         <h3 className="text-lg font-medium text-slate-900 mb-2">Không tìm thấy hồ sơ</h3>
         <p className="text-slate-600 mb-4">Hồ sơ vay với ID {id} không tồn tại.</p>
         <button
-          onClick={() => navigate(getBackRoute())}
+          onClick={() => router.push(getBackRoute())}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
           Quay lại danh sách
@@ -288,9 +286,9 @@ export const LoanDetailView: React.FC = () => {
 
     // Check if current status matches this step
     const isCurrentStep = step.matchingStatuses.includes(currentLoanStatus);
-    
+
     // Get order of current status
-    const statusOrder = workflowSteps.find(s => 
+    const statusOrder = workflowSteps.find(s =>
       s.matchingStatuses.includes(currentLoanStatus)
     )?.order || 0;
 
@@ -500,7 +498,7 @@ export const LoanDetailView: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate(getBackRoute())}
+            onClick={() => router.push(getBackRoute())}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-slate-600" />
@@ -669,7 +667,7 @@ export const LoanDetailView: React.FC = () => {
           </div>
 
           {/* Tài liệu đính kèm */}
-          {loan.documents && loan.documents.length > 0 && (
+          {loan.documents && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -677,102 +675,108 @@ export const LoanDetailView: React.FC = () => {
                   Tài liệu đính kèm
                 </h3>
               </div>
-              
+
               <div className="space-y-6">
                 {(() => {
                   const groupedDocs = groupDocumentsByType(loan.documents || []);
                   return documentTypes.map((typeInfo) => {
                     const docs = groupedDocs[typeInfo.type] || [];
-                    if (docs.length === 0) return null;
-                  
-                  return (
-                    <div key={typeInfo.type} className="border-b border-slate-100 last:border-b-0 pb-6 last:pb-0">
-                      <div className="flex items-center gap-2 mb-4">
-                        <typeInfo.icon className="w-5 h-5 text-blue-600" />
-                        <h4 className="font-semibold text-slate-900">{typeInfo.label}</h4>
-                        <span className="text-sm text-slate-500">({docs.length})</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {docs.map((doc, index) => {
-                          const isImage = isImageFile(doc.fileName);
-                          return (
-                            <div 
-                              key={`${doc.id || index}`}
-                              className="relative group border border-slate-200 rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow"
-                            >
-                              {isImage ? (
-                                <div 
-                                  className="aspect-video bg-slate-100 cursor-pointer relative overflow-hidden"
-                                  onClick={() => {
-                                    const groupedDocs = groupDocumentsByType(loan.documents || []);
-                                    const categoryDocs = groupedDocs[typeInfo.type] || [];
-                                    const docIndex = categoryDocs.findIndex(d => d.id === doc.id || d.fileUrl === doc.fileUrl);
-                                    openImagePreview(categoryDocs, docIndex >= 0 ? docIndex : 0);
-                                  }}
+
+                    return (
+                      <div key={typeInfo.type} className="border-b border-slate-100 last:border-b-0 pb-6 last:pb-0">
+                        <div className="flex items-center gap-2 mb-4">
+                          <typeInfo.icon className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-semibold text-slate-900">{typeInfo.label}</h4>
+                          <span className="text-sm text-slate-500">({docs.length})</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {docs.length > 0 ? (
+                            docs.map((doc, index) => {
+                              const isImage = isImageFile(doc.fileName);
+                              return (
+                                <div
+                                  key={`${doc.id || index}`}
+                                  className="relative group border border-slate-200 rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow"
                                 >
-                                  <img 
-                                    src={doc.fileUrl} 
-                                    alt={doc.fileName}
-                                    className="w-full h-full object-cover"
-                                  />
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                    <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  {isImage ? (
+                                    <div
+                                      className="aspect-video bg-slate-100 cursor-pointer relative overflow-hidden"
+                                      onClick={() => {
+                                        const groupedDocs = groupDocumentsByType(loan.documents || []);
+                                        const categoryDocs = groupedDocs[typeInfo.type] || [];
+                                        const docIndex = categoryDocs.findIndex(d => d.id === doc.id || d.fileUrl === doc.fileUrl);
+                                        openImagePreview(categoryDocs, docIndex >= 0 ? docIndex : 0);
+                                      }}
+                                    >
+                                      <img
+                                        src={doc.fileUrl}
+                                        alt={doc.fileName}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                        <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </div>
+                                      {doc.verified && (
+                                        <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+                                          <CheckCircle2 className="w-4 h-4" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="aspect-video bg-slate-50 flex items-center justify-center">
+                                      <FileText className="w-12 h-12 text-slate-400" />
+                                      {doc.verified && (
+                                        <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+                                          <CheckCircle2 className="w-4 h-4" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className="p-3">
+                                    <p className="text-xs font-medium text-slate-900 truncate" title={doc.fileName}>
+                                      {doc.fileName}
+                                    </p>
+                                    <div className="flex items-center justify-between mt-2">
+                                      <button
+                                        onClick={() => {
+                                          const groupedDocs = groupDocumentsByType(loan.documents || []);
+                                          const categoryDocs = groupedDocs[typeInfo.type] || [];
+                                          const docIndex = categoryDocs.findIndex(d => d.id === doc.id || d.fileUrl === doc.fileUrl);
+                                          openImagePreview(categoryDocs, docIndex >= 0 ? docIndex : 0);
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                        Xem
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const link = document.createElement('a');
+                                          link.href = doc.fileUrl;
+                                          link.download = doc.fileName;
+                                          link.click();
+                                        }}
+                                        className="text-xs text-slate-600 hover:text-slate-700 flex items-center gap-1"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        Tải
+                                      </button>
+                                    </div>
                                   </div>
-                                  {doc.verified && (
-                                    <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
-                                      <CheckCircle2 className="w-4 h-4" />
-                                    </div>
-                                  )}
                                 </div>
-                              ) : (
-                                <div className="aspect-video bg-slate-50 flex items-center justify-center">
-                                  <FileText className="w-12 h-12 text-slate-400" />
-                                  {doc.verified && (
-                                    <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
-                                      <CheckCircle2 className="w-4 h-4" />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              <div className="p-3">
-                                <p className="text-xs font-medium text-slate-900 truncate" title={doc.fileName}>
-                                  {doc.fileName}
-                                </p>
-                                <div className="flex items-center justify-between mt-2">
-                                  <button
-                                    onClick={() => {
-                                      const groupedDocs = groupDocumentsByType(loan.documents || []);
-                                      const categoryDocs = groupedDocs[typeInfo.type] || [];
-                                      const docIndex = categoryDocs.findIndex(d => d.id === doc.id || d.fileUrl === doc.fileUrl);
-                                      openImagePreview(categoryDocs, docIndex >= 0 ? docIndex : 0);
-                                    }}
-                                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                                  >
-                                    <Eye className="w-3 h-3" />
-                                    Xem
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const link = document.createElement('a');
-                                      link.href = doc.fileUrl;
-                                      link.download = doc.fileName;
-                                      link.click();
-                                    }}
-                                    className="text-xs text-slate-600 hover:text-slate-700 flex items-center gap-1"
-                                  >
-                                    <Download className="w-3 h-3" />
-                                    Tải
-                                  </button>
-                                </div>
-                              </div>
+                              );
+                            })
+                          ) : (
+                            <div className="col-span-full py-4 px-4 border border-dashed border-slate-200 rounded-lg bg-slate-50 flex items-center gap-3">
+                              <AlertTriangle className="w-5 h-5 text-slate-300" />
+                              <span className="text-sm text-slate-400 italic">Không có thông tin</span>
                             </div>
-                          );
-                        })}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
+                    );
                   });
                 })()}
               </div>
@@ -826,16 +830,16 @@ export const LoanDetailView: React.FC = () => {
                       const isLast = index === workflowSteps.length - 1;
                       const nextStep = !isLast ? workflowSteps[index + 1] : null;
                       const nextStepStatus = nextStep ? getStepStatus(nextStep, loan.status) : null;
-                      
+
                       // Determine line color
-                      const lineColor = 
-                        (stepStatus === 'completed' || stepStatus === 'current') && 
-                        (nextStepStatus === 'completed' || nextStepStatus === 'current')
+                      const lineColor =
+                        (stepStatus === 'completed' || stepStatus === 'current') &&
+                          (nextStepStatus === 'completed' || nextStepStatus === 'current')
                           ? 'bg-blue-600'
                           : stepStatus === 'completed'
-                          ? 'bg-blue-600'
-                          : 'bg-slate-200';
-                      
+                            ? 'bg-blue-600'
+                            : 'bg-slate-200';
+
                       return (
                         <div key={step.id} className="relative">
                           <div className="flex items-start gap-4">
@@ -843,14 +847,13 @@ export const LoanDetailView: React.FC = () => {
                             <div className={`
                               relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center
                               transition-all duration-300
-                              ${
-                                stepStatus === 'completed'
-                                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                                  : stepStatus === 'current'
+                              ${stepStatus === 'completed'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                                : stepStatus === 'current'
                                   ? 'bg-blue-100 border-2 border-blue-600 text-blue-600 ring-4 ring-blue-100'
                                   : stepStatus === 'rejected'
-                                  ? 'bg-red-100 border-2 border-red-600 text-red-600'
-                                  : 'bg-slate-100 border-2 border-slate-300 text-slate-400'
+                                    ? 'bg-red-100 border-2 border-red-600 text-red-600'
+                                    : 'bg-slate-100 border-2 border-slate-300 text-slate-400'
                               }
                             `}>
                               {stepStatus === 'completed' ? (
@@ -866,14 +869,13 @@ export const LoanDetailView: React.FC = () => {
                             <div className="flex-1 pt-1">
                               <div className={`
                                 font-semibold text-sm mb-1
-                                ${
-                                  stepStatus === 'completed'
-                                    ? 'text-blue-600'
-                                    : stepStatus === 'current'
+                                ${stepStatus === 'completed'
+                                  ? 'text-blue-600'
+                                  : stepStatus === 'current'
                                     ? 'text-blue-700'
                                     : stepStatus === 'rejected'
-                                    ? 'text-red-600'
-                                    : 'text-slate-500'
+                                      ? 'text-red-600'
+                                      : 'text-slate-500'
                                 }
                               `}>
                                 {step.name}
@@ -896,7 +898,7 @@ export const LoanDetailView: React.FC = () => {
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Connecting line */}
                           {!isLast && (
                             <div className={`absolute left-6 top-12 w-0.5 h-6 ${lineColor} transition-colors`} />
@@ -907,7 +909,7 @@ export const LoanDetailView: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="pt-4 border-t border-slate-200">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Trạng thái hiện tại</label>
                 <div className="mt-2">{getStatusBadge(loan.status)}</div>
@@ -979,7 +981,7 @@ export const LoanDetailView: React.FC = () => {
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Mức độ rủi ro</label>
                   <p className="mt-1 text-sm font-medium text-slate-900">
                     {loan.assessmentReport.riskLevel === 'low' ? 'Thấp' :
-                     loan.assessmentReport.riskLevel === 'medium' ? 'Trung bình' : 'Cao'}
+                      loan.assessmentReport.riskLevel === 'medium' ? 'Trung bình' : 'Cao'}
                   </p>
                 </div>
                 <div>
@@ -1036,7 +1038,7 @@ export const LoanDetailView: React.FC = () => {
                   {previewDocs[previewIndex]?.fileName}
                 </span>
               </div>
-              
+
               {/* Zoom Controls */}
               <div className="flex items-center gap-2">
                 {/* Zoom Level Indicator - chỉ hiển thị cho ảnh */}
@@ -1047,7 +1049,7 @@ export const LoanDetailView: React.FC = () => {
                     </span>
                   </div>
                 )}
-                
+
                 {/* Zoom controls - chỉ hiển thị cho ảnh */}
                 {/\.(jpg|jpeg|png|webp|gif)$/i.test(previewDocs[previewIndex]?.fileName || '') && (
                   <div className="flex gap-1 bg-slate-800/90 rounded-lg p-1 border border-slate-700">
@@ -1097,7 +1099,7 @@ export const LoanDetailView: React.FC = () => {
                     </button>
                   </div>
                 )}
-                
+
                 {/* Download button for PDF */}
                 {/\.pdf$/i.test(previewDocs[previewIndex]?.fileName || '') && (
                   <a
@@ -1110,7 +1112,7 @@ export const LoanDetailView: React.FC = () => {
                     Tải PDF
                   </a>
                 )}
-                
+
                 <button
                   type="button"
                   onClick={closeImagePreview}
@@ -1142,11 +1144,11 @@ export const LoanDetailView: React.FC = () => {
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
-                style={{ 
-                  cursor: isDragging 
-                    ? 'grabbing' 
+                style={{
+                  cursor: isDragging
+                    ? 'grabbing'
                     : zoomLevel !== 1 && /\.(jpg|jpeg|png|webp|gif)$/i.test(previewDocs[previewIndex]?.fileName || '')
-                      ? 'grab' 
+                      ? 'grab'
                       : 'default',
                   userSelect: 'none'
                 }}
@@ -1245,11 +1247,10 @@ export const LoanDetailView: React.FC = () => {
                       e.stopPropagation();
                       setPreviewIndex(idx);
                     }}
-                    className={`relative w-10 h-10 rounded border overflow-hidden flex items-center justify-center flex-shrink-0 ${
-                      idx === previewIndex
-                        ? 'border-blue-400 ring-2 ring-blue-500/60'
-                        : 'border-slate-600 hover:border-slate-400'
-                    }`}
+                    className={`relative w-10 h-10 rounded border overflow-hidden flex items-center justify-center flex-shrink-0 ${idx === previewIndex
+                      ? 'border-blue-400 ring-2 ring-blue-500/60'
+                      : 'border-slate-600 hover:border-slate-400'
+                      }`}
                   >
                     {/\.(jpg|jpeg|png|webp|gif)$/i.test(doc.fileName) ? (
                       <img

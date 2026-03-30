@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
   Users, FileText, CheckCircle, XCircle, Clock, DollarSign,
@@ -133,7 +134,7 @@ export const AdminDashboardView: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {dashboardStats.map((stat, index) => {
-          const Icon = getIcon(stat.icon);
+          const Icon = getIcon(stat.icon ?? 'FileText');
           return (
             <div key={index} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">

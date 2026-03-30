@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, Download, Plus, Eye, MoreHorizontal, Phone, Mail, MapPin, Star, ShieldAlert, UserCheck, Users, Trophy, UserX } from 'lucide-react';
 import { useWorkflow } from '../contexts/WorkflowContext';

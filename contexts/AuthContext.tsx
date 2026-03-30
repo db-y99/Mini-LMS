@@ -1,3 +1,4 @@
+'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, Permission, AuthContextType } from '../types';
 
@@ -27,7 +28,11 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'create_loan', 'view_loan', 'edit_loan', 'approve_loan', 'reject_loan', 'disburse_loan',
     'manage_users', 'manage_roles', 'view_audit_logs', 'manage_commission',
     'view_reports', 'manage_system', 'manage_cache'
-  ]
+  ],
+  collection: ['view_loan', 'view_reports'],
+  legal: ['view_loan', 'view_reports'],
+  branch_manager: ['view_loan', 'approve_loan', 'view_reports'],
+  system: ['view_loan', 'view_reports']
 };
 
 // Mock user data for demo
@@ -92,6 +97,42 @@ const MOCK_USERS: Record<UserRole, Omit<User, 'id' | 'createdAt' | 'updatedAt'>>
     fullName: 'IT Support',
     role: 'it',
     permissions: ROLE_PERMISSIONS.it,
+    isActive: true,
+    lastLogin: new Date()
+  },
+  collection: {
+    username: 'collection',
+    email: 'collection@Mini-LMS.vn',
+    fullName: 'Vũ Thị Lan',
+    role: 'collection',
+    permissions: ROLE_PERMISSIONS.collection,
+    isActive: true,
+    lastLogin: new Date()
+  },
+  legal: {
+    username: 'legal',
+    email: 'legal@Mini-LMS.vn',
+    fullName: 'Hoàng Minh Đức',
+    role: 'legal',
+    permissions: ROLE_PERMISSIONS.legal,
+    isActive: true,
+    lastLogin: new Date()
+  },
+  branch_manager: {
+    username: 'branch_manager',
+    email: 'bm@Mini-LMS.vn',
+    fullName: 'Nguyễn Thị Hương',
+    role: 'branch_manager',
+    permissions: ROLE_PERMISSIONS.branch_manager,
+    isActive: true,
+    lastLogin: new Date()
+  },
+  system: {
+    username: 'system',
+    email: 'system@Mini-LMS.vn',
+    fullName: 'System',
+    role: 'system',
+    permissions: ROLE_PERMISSIONS.system,
     isActive: true,
     lastLogin: new Date()
   }

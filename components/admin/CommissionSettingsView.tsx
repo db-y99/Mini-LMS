@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
   DollarSign, Plus, Edit, Trash2, Save, X,
